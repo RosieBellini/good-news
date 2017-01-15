@@ -1,4 +1,10 @@
-# Uses newsapi.org for headline downloads
+# AUTHOR:       Daniel Welsh
+# CREATED:      15/01/2017
+# DESCRIPTION:
+#               A python script that pulls headlines from popular news sites using the
+#               NewsAPI (http://www.newsapi.org) api and performs semantic analysis
+#               with vaderSentiment to show the most positive and most negative
+#               headlines at the current time.
 
 import json
 import urllib.request
@@ -7,6 +13,7 @@ import dotenv
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 
+# Data-type for a headline
 class Headline(object):
     headline = ""
     link = ""
@@ -38,6 +45,9 @@ class Headline(object):
         self.hashcode = hash(self)
 
 
+# Performs semantic analysis on the headline and saves as Headline data-type
+# PARAMS:   array of headlines, array items = [headline, link, origin, and date published]
+# RETURNS:  array of Headlines
 def analyze_headlines(blocks):
     analyzer = SentimentIntensityAnalyzer()
     headlines = []
@@ -50,6 +60,9 @@ def analyze_headlines(blocks):
     return headlines
 
 
+# Gets headlines from http://www.newsapi.org
+# PARAMS:   url - string
+# RETURNS:  array of headlines, array items = [headline, link, origin, and date published]
 def get_headlines(url):
     headlines = []
 
@@ -64,6 +77,8 @@ def get_headlines(url):
     return headlines
 
 
+# Prints and formats headlines
+# PARAMS:   Headlines[]
 def print_results(headlines):
     print("{:-<359}".format('-'))
     print("{: <120} {: <10} {: <25} {: <180} {: <25}".format('Headline', 'Semantic', 'Origin', 'Link', 'Date-Time'))
