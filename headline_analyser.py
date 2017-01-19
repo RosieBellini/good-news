@@ -68,13 +68,63 @@ def get_headlines(url):
 
     url += dotenv.get('API_KEY', 'no-key')
     req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-    response = urllib.request.urlopen(req).read()
+    response = urllib.request.urlopen(req).read().decode('utf8')
     r = json.loads(response)
 
     for re in r['articles']:
-        headlines.append([re['title'], re['url'], r['source'], str(re['publishedAt'])])
+        headlines.append(
+            [
+                re['title'],
+                re['url'],
+                r['source'],
+                str(re['publishedAt'])
+            ]
+        )
 
     return headlines
+
+
+def print_to_file(headlines):
+
+    f = open('headlines.txt', 'w')
+
+    f.write("{:-<359}".format('-') + '\n')
+    f.write("{: <120} {: <10} {: <25} {: <180} {: <25}".format('Headline', 'Semantic', 'Origin', 'Link', 'Date-Time') + '\n')
+    f.write("{:-<359}".format('-') + '\n')
+
+    i = 0
+    idx = 0
+    l_idx = 0
+    highest = 0.0
+    lowest = 0.0
+    cumulative_sentiment = 0.0
+    for h in headlines:
+        f.write(str(h) + '\n')
+
+        if float(h.semantic_value) > highest:
+            highest = float(h.semantic_value)
+            idx = i
+
+        if lowest > float(h.semantic_value):
+            lowest = float(h.semantic_value)
+            l_idx = i
+
+        cumulative_sentiment += float(h.semantic_value)
+
+        i += 1
+
+    f.write('\n')
+
+    f.write("{:-<359}".format('-') + '\n')
+
+    f.write('Total headlines analysed: ' + str(len(headlines)) + '\n')
+    f.write('Cumulative Sentiment:     ' + str(cumulative_sentiment) + '\n')
+
+    f.write('\nThe most positive article of the day is:' + '\n')
+    f.write(str(headlines[idx]) + '\n')
+
+    f.write('\nThe most negative article of the day is:' + '\n')
+    f.write(str(headlines[l_idx]) + '\n')
 
 
 # Prints and formats headlines
@@ -131,7 +181,10 @@ urls = \
         'https://newsapi.org/v1/articles?source=independent&sortBy=top&apiKey=',
         'https://newsapi.org/v1/articles?source=the-guardian-uk&sortBy=top&apiKey=',
         'https://newsapi.org/v1/articles?source=the-new-york-times&sortBy=top&apiKey=',
-        'https://newsapi.org/v1/articles?source=the-telegraph&sortBy=top&apiKey='
+        'https://newsapi.org/v1/articles?source=the-telegraph&sortBy=top&apiKey=',
+        'https://newsapi.org/v1/articles?source=the-economist&sortBy=top&apiKey=',
+        'https://newsapi.org/v1/articles?source=the-huffington-post&sortBy=top&apiKey=',
+        'https://newsapi.org/v1/articles?source=national-geographic&sortBy=top&apiKey=',
     ]
 
 for url in urls:
@@ -141,3 +194,4 @@ for url in urls:
 all_headlines = analyze_headlines(raw_headlines)
 
 print_results(all_headlines)
+print_to_file(all_headlines)
