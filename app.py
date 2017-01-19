@@ -28,20 +28,20 @@ def save_headlines():
     for h in headlines:
         print(h)
 
-	db = MySQLdb.connect(host="localhost",  user="root", passwd="pass", db="good_news")        # name of the data base
+    db = MySQLdb.connect(host="localhost", user="root", passwd="pass", db="good_news")  # name of the data base
 
-	# you must create a Cursor object. It will let
-	#  you execute all the queries you need
-	cur = db.cursor()
+    # you must create a Cursor object. It will let
+    #  you execute all the queries you need
+    cur = db.cursor()
 
-	# Use all the SQL you like
-	cur.execute("SELECT * good_news")
+    # Use all the SQL you like
+    cur.execute("SELECT * good_news")
 
-	# print all the first cell of all the rows
-	for row in cur.fetchall():
-    		print row[0]
+    # print all the first cell of all the rows
+    for row in cur.fetchall():
+        print(row[0])
 
-	db.close()
+    db.close()
 
     return content
 
