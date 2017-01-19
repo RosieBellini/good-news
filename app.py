@@ -6,13 +6,19 @@
 
 
 import json
-import MySQLdb
-
+import dotenv
 from flask import Flask
 from flask import request
 
-app = Flask(__name__)
+import pymysql
+pymysql.install_as_MySQLdb()
+import MySQLdb
 
+app = Flask(__name__)
+dotenv.load()
+database = dotenv.get('DATABASE', 'no db')
+user = dotenv.get('USER', 'no user')
+password = dotenv.get('PASSWORD', 'no password')
 
 @app.route('/')
 def hello_world():
@@ -22,20 +28,21 @@ def hello_world():
 @app.route('/headlines/save', methods=['POST'])
 def save_headlines():
     content = request.data
+    content = bytes.decode(content)
     json_content = json.loads(content)
 
     headlines = json_content['headlines']
     for h in headlines:
         print(h)
 
-    db = MySQLdb.connect(host="localhost", user="root", passwd="pass", db="good_news")  # name of the data base
+    db = MySQLdb.connect(host="localhost", user=user, passwd=password, db=database)  # name of the data base
 
     # you must create a Cursor object. It will let
     #  you execute all the queries you need
     cur = db.cursor()
 
     # Use all the SQL you like
-    cur.execute("SELECT * good_news")
+    cur.execute("SELECT * FROM headlines")
 
     # print all the first cell of all the rows
     for row in cur.fetchall():
