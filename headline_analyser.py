@@ -10,10 +10,19 @@ import json
 import urllib.request
 
 import dotenv
+import requests
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
+from json import JSONEncoder
 
-# Data-type for a headline
+
+class MyEncoder(JSONEncoder):
+    def default(self, o):
+        return o.__dict__
+
+    # Data-type for a headline
+
+
 class Headline(object):
     headline = ""
     link = ""
@@ -35,6 +44,17 @@ class Headline(object):
         base *= hash(self.datetime)
 
         return base
+
+    # FROM: http://stackoverflow.com/questions/3768895/how-to-make-a-class-json-serializable
+    def default(self, o):
+        try:
+            iterable = iter(o)
+        except TypeError:
+            pass
+        else:
+            return list(iterable)
+        # Let the base class default method raise the TypeError
+        return json.JSONEncoder.default(self, o)
 
     def __init__(self, headline, link, semantic_value, origin, datetime):
         self.headline = headline
@@ -84,12 +104,40 @@ def get_headlines(url):
     return headlines
 
 
-def print_to_file(headlines):
+def post_data(headlines):
+    json_headlines = []
 
+    print(type(headlines[0]))
+    for h in headlines:
+
+        line = {
+            "headline": h.headline,
+            "link": h.link,
+            "sentiment": str(h.semantic_value),
+            "origin": h.origin,
+            "hashcode": str(hash(h)),
+            "datetime": h.datetime
+        }
+        json_headlines.append(line)
+
+    data = {
+        'headlines': json_headlines
+    }
+
+    url = 'http://127.0.0.1:5000/headlines/save'
+
+    headers = {'Content-Type': 'application/json', 'Accept': 'application/json'}
+    response = requests.post(url, json.dumps(data), headers=headers)
+
+    return response
+
+
+def print_to_file(headlines):
     f = open('headlines.txt', 'w')
 
     f.write("{:-<359}".format('-') + '\n')
-    f.write("{: <120} {: <10} {: <25} {: <180} {: <25}".format('Headline', 'Semantic', 'Origin', 'Link', 'Date-Time') + '\n')
+    f.write("{: <120} {: <10} {: <25} {: <180} {: <25}".format('Headline', 'Semantic', 'Origin', 'Link',
+                                                               'Date-Time') + '\n')
     f.write("{:-<359}".format('-') + '\n')
 
     i = 0
@@ -195,3 +243,4 @@ all_headlines = analyze_headlines(raw_headlines)
 
 print_results(all_headlines)
 print_to_file(all_headlines)
+post_data(all_headlines)
