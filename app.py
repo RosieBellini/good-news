@@ -17,8 +17,8 @@ import MySQLdb
 app = Flask(__name__)
 dotenv.load()
 database = dotenv.get('DATABASE', 'no db')
-user = dotenv.get('USER', 'no user')
-password = dotenv.get('PASSWORD', 'no password')
+user = dotenv.get('DB_USER', 'no user')
+password = dotenv.get('DB_PASSWORD', 'no password')
 
 @app.route('/')
 def hello_world():
@@ -49,7 +49,7 @@ def save_headlines():
         print(row[0])
 
     for h in headlines:
-        cur.execute("INSERT INTO good_news (headline, link, origin, semantic_value, hashcode, datetime) VALUES (%s, %s, %s, %s, %s, %s)" %(h['headline'], h['link'], h['origin'], h["semantic_value"], h['hashcode'], h['datetime']))
+        cur.execute("INSERT INTO good_news (headline, link, origin, semantic_value, hashcode, datetime) VALUES (%s, %s, %s, %s, %s, %s)" %(h['headline'], h['link'], h['origin'], h["sentiment"], h['hashcode'], h['datetime']))
 
     db.close()
 
