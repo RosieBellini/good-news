@@ -48,8 +48,9 @@ def save_headlines():
     for row in cur.fetchall():
         print(row[0])
 
-    sql = "INSERT INTO good_news (headline, link, origin, semantic_value, hashcode, datetime) VALUES (%s, %s, %s, %s, %s, %s)"
+    sql = "INSERT INTO headlines (headline, link, origin, semantic_value, hashcode, datetime) VALUES (%s, %s, %s, %s, %s, %s)"
     for h in headlines:
+        print("HASH:\t" + h['hashcode'])
         cur.execute(sql, (h['headline'], h['link'], h['origin'], h["sentiment"], h['hashcode'], h['datetime']))
 
     db.close()
