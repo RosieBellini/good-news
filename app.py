@@ -36,6 +36,10 @@ def save_headlines():
     #     print(h)
 
     db = MySQLdb.connect(host="localhost", user=user, passwd=password, db=database)  # name of the data base
+    db.set_character_set('utf8')
+    db.execute('SET NAMES utf8;')
+    db.execute('SET CHARACTER SET utf8;')
+    db.execute('SET character_set_connection=utf8;')
 
     # you must create a Cursor object. It will let
     #  you execute all the queries you need

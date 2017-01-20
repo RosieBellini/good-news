@@ -48,7 +48,7 @@ class Headline(object):
             base *= 31
         else:
             base *= hash(self.semantic_value)
-            
+
         base *= hash(self.origin)
         base *= hash(self.datetime)
 
