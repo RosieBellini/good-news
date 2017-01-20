@@ -20,7 +20,11 @@ class MyEncoder(JSONEncoder):
     def default(self, o):
         return o.__dict__
 
-    # Data-type for a headline
+        # Data-type for a headline
+
+
+def isclose(a, b, rel_tol=1e-09, abs_tol=0.0):
+    return abs(a - b) <= max(rel_tol * max(abs(a), abs(b)), abs_tol)
 
 
 class Headline(object):
@@ -39,7 +43,12 @@ class Headline(object):
         base = 37
         base *= hash(self.headline)
         base *= hash(self.link)
-        base *= hash(self.semantic_value)
+
+        if isclose(self.semantic_value, float(0.0)):
+            base *= 31
+        else:
+            base *= hash(self.semantic_value)
+            
         base *= hash(self.origin)
         base *= hash(self.datetime)
 
@@ -109,7 +118,6 @@ def post_data(headlines):
 
     print(type(headlines[0]))
     for h in headlines:
-
         line = {
             "headline": h.headline,
             "link": h.link,
@@ -123,6 +131,8 @@ def post_data(headlines):
     data = {
         'headlines': json_headlines
     }
+
+    print(data['headlines'])
 
     url = 'http://127.0.0.1:5000/headlines/save'
 
