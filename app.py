@@ -35,8 +35,7 @@ def save_headlines():
     # for h in headlines:
     #     print(h)
 
-    db = MySQLdb.connect(host="localhost", user=user, passwd=password, db=database)  # name of the data base
-    db.set_character_set('utf8')
+    db = MySQLdb.connect(host="localhost", user=user, passwd=password, db=database, charset='utf8')  # name of the data base
 
     # you must create a Cursor object. It will let
     #  you execute all the queries you need
@@ -56,6 +55,7 @@ def save_headlines():
     for h in headlines:
         print("HASH:\t" + h['hashcode'])
         cur.execute(sql, (h['headline'], h['link'], h['origin'], h["sentiment"], h['hashcode'], h['datetime']))
+        db.commit()
 
     db.close()
 
