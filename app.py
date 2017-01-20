@@ -4,7 +4,7 @@
 # DESCRIPTION:
 # -   Flask server to handle incoming headlines, write to database, and display headlines.
 
-
+import urllib.request
 import json
 import dotenv
 from flask import Flask
@@ -32,8 +32,8 @@ def save_headlines():
     json_content = json.loads(content)
 
     headlines = json_content['headlines']
-    for h in headlines:
-        print(h)
+    # for h in headlines:
+    #     print(h)
 
     db = MySQLdb.connect(host="localhost", user=user, passwd=password, db=database)  # name of the data base
 
@@ -47,6 +47,9 @@ def save_headlines():
     # print all the first cell of all the rows
     for row in cur.fetchall():
         print(row[0])
+
+    for h in headlines:
+        cur.execute("INSERT INTO good_news (headline, link, origin, semantic_value, hashcode, datetime) VALUES (%s, %s, %s, %s, %s, %s)" %(h['headline'], h['link'], h['origin'], h["semantic_value"], h['hashcode'], h['datetime']))
 
     db.close()
 
