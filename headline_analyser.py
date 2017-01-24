@@ -8,6 +8,7 @@
 
 import json
 import urllib.request
+import hashlib
 
 import dotenv
 import requests
@@ -38,7 +39,7 @@ class Headline(object):
     semantic_value = 0.0
     origin = ""
     datetime = ""
-    hashcode = 0
+    # hashcode = 0
     neg = 0.0
     pos = 0.0
     neu = 0.0
@@ -73,9 +74,24 @@ class Headline(object):
             base *= hash(self.neu)
 
         base *= hash(self.origin)
-        base *= hash(self.datetime)
+        # base *= hash(self.datetime)
 
-        return base
+        string = "{: <120} {: <10} {: <25} {: <180} {: <10} {: <10} {: <10}".format(self.headline, str(self.semantic_value), self.origin, self.link, str(self.pos), str(self.neg), str(self.neu))
+
+        return hash(string)
+
+    def sha256(self):
+        string = "{: <120} {: <10} {: <25} {: <180} {: <10} {: <10} {: <10}".format(self.headline,
+                                                                                    str(self.semantic_value),
+                                                                                    self.origin, self.link,
+                                                                                    str(self.pos), str(self.neg),
+                                                                                    str(self.neu))
+
+        hash_object = hashlib.sha256(bytes(string, 'utf-8'))
+        hex_dig = hash_object.hexdigest()
+        # print(hex_dig)
+
+        return hex_dig
 
     # FROM: http://stackoverflow.com/questions/3768895/how-to-make-a-class-json-serializable
     def default(self, o):
@@ -94,7 +110,7 @@ class Headline(object):
         self.semantic_value = semantic_value
         self.origin = origin
         self.datetime = datetime
-        self.hashcode = hash(self)
+        # self.hashcode = hash(self)
         self.pos = pos
         self.neg = neg
         self.neu = neu
@@ -126,6 +142,8 @@ def analyze_headlines(blocks):
 
         h = Headline(block[0], block[1], vs['compound'], block[2], block[3], vs['pos'], vs['neg'], vs['neu'])
         headlines.append(h)
+
+        print("HASHCODE: " + str(h.sha256()))
 
         i += 1
 
@@ -169,7 +187,7 @@ def post_data(headlines):
             "link": h.link,
             "sentiment": str(h.semantic_value),
             "origin": h.origin,
-            "hashcode": str(hash(h)),
+            "hashcode": h.sha256(),
             "datetime": h.datetime
         }
         json_headlines.append(line)
@@ -199,9 +217,9 @@ def save_to_db(headlines):
 
     sql = "INSERT INTO headlines (headline, link, origin, semantic_value, hashcode, date_time, pos, neg, neu) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
     for h in headlines:
-        print("Added Headline:\t" + str(h.hashcode))
+        print("Added Headline:\t" + h.sha256())
         try:
-            cur.execute(sql, (h.headline, h.link, h.origin, h.semantic_value, h.hashcode, h.datetime, h.pos, h.neg, h.neu))
+            cur.execute(sql, (h.headline, h.link, h.origin, h.semantic_value, h.sha256(), h.datetime, h.pos, h.neg, h.neu))
         except pymysql.err.IntegrityError as e:
             print("ERROR: {}".format(e))
             continue
