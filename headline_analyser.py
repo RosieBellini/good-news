@@ -16,6 +16,7 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from json import JSONEncoder
 
 import pymysql
+
 pymysql.install_as_MySQLdb()
 import MySQLdb
 
@@ -38,6 +39,9 @@ class Headline(object):
     origin = ""
     datetime = ""
     hashcode = 0
+    neg = 0.0
+    pos = 0.0
+    neu = 0.0
 
     def __str__(self, *args, **kwargs):
         return "{: <120} {: <10} {: <25} {: <180} {: <25}".format(self.headline, str(self.semantic_value), self.origin,
@@ -52,6 +56,21 @@ class Headline(object):
             base *= 31
         else:
             base *= hash(self.semantic_value)
+
+        if isclose(self.pos, float(0.0)):
+            base *= 31
+        else:
+            base *= hash(self.pos)
+
+        if isclose(self.neg, float(0.0)):
+            base *= 31
+        else:
+            base *= hash(self.neg)
+
+        if isclose(self.neu, float(0.0)):
+            base *= 31
+        else:
+            base *= hash(self.neu)
 
         base *= hash(self.origin)
         base *= hash(self.datetime)
@@ -69,13 +88,16 @@ class Headline(object):
         # Let the base class default method raise the TypeError
         return json.JSONEncoder.default(self, o)
 
-    def __init__(self, headline, link, semantic_value, origin, datetime):
+    def __init__(self, headline, link, semantic_value, origin, datetime, pos, neg, neu):
         self.headline = headline
         self.link = link
         self.semantic_value = semantic_value
         self.origin = origin
         self.datetime = datetime
         self.hashcode = hash(self)
+        self.pos = pos
+        self.neg = neg
+        self.neu = neu
 
 
 # Performs semantic analysis on the headline and saves as Headline data-type
@@ -84,12 +106,31 @@ class Headline(object):
 def analyze_headlines(blocks):
     analyzer = SentimentIntensityAnalyzer()
     headlines = []
+    i = 0
+    idx_p = 0
+    idx_m = 0
+    m_pos = 0.0
+    m_neg = 0.0
 
     for block in blocks:
         vs = analyzer.polarity_scores(block[0])
-        h = Headline(block[0], block[1], vs['compound'], block[2], block[3])
+        print("{:-<65} {}".format(block[0], str(vs)))
+
+        if float(vs['pos']) > m_pos:
+            m_pos = float(vs['pos'])
+            idx_p = i
+
+        if float(vs['neg'] > m_neg):
+            m_neg = float(vs['neg'])
+            idx_m = i
+
+        h = Headline(block[0], block[1], vs['compound'], block[2], block[3], vs['pos'], vs['neg'], vs['neu'])
         headlines.append(h)
 
+        i += 1
+
+    print ("MOST POSITIVE = " + blocks[idx_p][0])
+    print("MOST Negative = " + blocks[idx_m][0])
     return headlines
 
 
@@ -105,9 +146,10 @@ def get_headlines(url):
     r = json.loads(response)
 
     for re in r['articles']:
+
         headlines.append(
             [
-                re['title'],
+                re['title'].split('\n')[0],
                 re['url'],
                 r['source'],
                 str(re['publishedAt'])
@@ -145,27 +187,21 @@ def post_data(headlines):
 
     return response
 
-def save_to_db(headlines):
 
-    db = MySQLdb.connect(host=db_host, user=db_user, passwd=db_password, db=database, charset='utf8')  # name of the data base
+def save_to_db(headlines):
+    db = MySQLdb.connect(host=db_host, user=db_user, passwd=db_password, db=database,
+                         charset='utf8')  # name of the data base
 
     cur = db.cursor()
     cur.execute('SET NAMES utf8;')
     cur.execute('SET CHARACTER SET utf8;')
     cur.execute('SET character_set_connection=utf8;')
 
-    # # Use all the SQL you like
-    # cur.execute("SELECT * FROM headlines")
-
-    # # print all the first cell of all the rows
-    # for row in cur.fetchall():
-    #     print(row[0])
-
-    sql = "INSERT INTO headlines (headline, link, origin, semantic_value, hashcode, date_time) VALUES (%s, %s, %s, %s, %s, %s)"
+    sql = "INSERT INTO headlines (headline, link, origin, semantic_value, hashcode, date_time, pos, neg, neu) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
     for h in headlines:
-        print("HASH:\t" + str(h.hashcode))
+        print("Added Headline:\t" + str(h.hashcode))
         try:
-            cur.execute(sql, (h.headline, h.link, h.origin, h.semantic_value, h.hashcode, h.datetime))
+            cur.execute(sql, (h.headline, h.link, h.origin, h.semantic_value, h.hashcode, h.datetime, h.pos, h.neg, h.neu))
         except pymysql.err.IntegrityError as e:
             print("ERROR: {}".format(e))
             continue
@@ -289,5 +325,4 @@ all_headlines = analyze_headlines(raw_headlines)
 
 print_results(all_headlines)
 print_to_file(all_headlines)
-# post_data(all_headlines)
 save_to_db(all_headlines)
