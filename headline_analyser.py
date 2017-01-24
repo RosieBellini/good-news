@@ -15,6 +15,10 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 from json import JSONEncoder
 
+import pymysql
+pymysql.install_as_MySQLdb()
+import MySQLdb
+
 
 class MyEncoder(JSONEncoder):
     def default(self, o):
@@ -141,6 +145,34 @@ def post_data(headlines):
 
     return response
 
+def save_to_db(headlines):
+
+    db = MySQLdb.connect(host=db_host, user=db_user, passwd=db_password, db=database, charset='utf8')  # name of the data base
+
+    cur = db.cursor()
+    cur.execute('SET NAMES utf8;')
+    cur.execute('SET CHARACTER SET utf8;')
+    cur.execute('SET character_set_connection=utf8;')
+
+    # # Use all the SQL you like
+    # cur.execute("SELECT * FROM headlines")
+
+    # # print all the first cell of all the rows
+    # for row in cur.fetchall():
+    #     print(row[0])
+
+    sql = "INSERT INTO headlines (headline, link, origin, semantic_value, hashcode, date_time) VALUES (%s, %s, %s, %s, %s, %s)"
+    for h in headlines:
+        print("HASH:\t" + str(h.hashcode))
+        try:
+            cur.execute(sql, (h.headline, h.link, h.origin, h.semantic_value, h.hashcode, h.datetime))
+        except pymysql.err.IntegrityError as e:
+            print("ERROR: {}".format(e))
+            continue
+        db.commit()
+
+    db.close()
+
 
 def print_to_file(headlines):
     f = open('headlines.txt', 'w')
@@ -230,6 +262,10 @@ def print_results(headlines):
 raw_headlines = []
 dotenv.load()
 key = dotenv.get('API_KEY', 'no key')
+database = dotenv.get('DATABASE', 'no database')
+db_user = dotenv.get('DB_USER', 'no user')
+db_password = dotenv.get('DB_PASSWORD', 'no password')
+db_host = dotenv.get('DB_HOST', 'no host')
 
 urls = \
     [
@@ -253,4 +289,5 @@ all_headlines = analyze_headlines(raw_headlines)
 
 print_results(all_headlines)
 print_to_file(all_headlines)
-post_data(all_headlines)
+# post_data(all_headlines)
+save_to_db(all_headlines)
