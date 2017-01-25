@@ -1,0 +1,14 @@
+body
+{
+    background: white;
+}
+
+footer
+{
+    margin-bottom: 20px;
+}
+
+.headline
+{
+    cursor: pointer;
+}

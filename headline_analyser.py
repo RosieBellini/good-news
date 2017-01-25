@@ -6,17 +6,16 @@
 #               with vaderSentiment to show the most positive and most negative
 #               headlines at the current time.
 
+import hashlib
 import json
 import urllib.request
-import hashlib
-
-import dotenv
-import requests
-from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
-
+from datetime import datetime
 from json import JSONEncoder
 
+import dotenv
 import pymysql
+import requests
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 pymysql.install_as_MySQLdb()
 import MySQLdb
@@ -25,8 +24,6 @@ import MySQLdb
 class MyEncoder(JSONEncoder):
     def default(self, o):
         return o.__dict__
-
-        # Data-type for a headline
 
 
 def isclose(a, b, rel_tol=1e-09, abs_tol=0.0):
@@ -39,7 +36,6 @@ class Headline(object):
     semantic_value = 0.0
     origin = ""
     datetime = ""
-    # hashcode = 0
     neg = 0.0
     pos = 0.0
     neu = 0.0
@@ -49,34 +45,12 @@ class Headline(object):
                                                                   self.link, str(self.datetime))
 
     def __hash__(self, *args, **kwargs):
-        base = 37
-        base *= hash(self.headline)
-        base *= hash(self.link)
 
-        if isclose(self.semantic_value, float(0.0)):
-            base *= 31
-        else:
-            base *= hash(self.semantic_value)
-
-        if isclose(self.pos, float(0.0)):
-            base *= 31
-        else:
-            base *= hash(self.pos)
-
-        if isclose(self.neg, float(0.0)):
-            base *= 31
-        else:
-            base *= hash(self.neg)
-
-        if isclose(self.neu, float(0.0)):
-            base *= 31
-        else:
-            base *= hash(self.neu)
-
-        base *= hash(self.origin)
-        # base *= hash(self.datetime)
-
-        string = "{: <120} {: <10} {: <25} {: <180} {: <10} {: <10} {: <10}".format(self.headline, str(self.semantic_value), self.origin, self.link, str(self.pos), str(self.neg), str(self.neu))
+        string = "{: <120} {: <10} {: <25} {: <180} {: <10} {: <10} {: <10}".format(self.headline,
+                                                                                    str(self.semantic_value),
+                                                                                    self.origin, self.link,
+                                                                                    str(self.pos), str(self.neg),
+                                                                                    str(self.neu))
 
         return hash(string)
 
@@ -89,7 +63,6 @@ class Headline(object):
 
         hash_object = hashlib.sha256(bytes(string, 'utf-8'))
         hex_dig = hash_object.hexdigest()
-        # print(hex_dig)
 
         return hex_dig
 
@@ -104,16 +77,15 @@ class Headline(object):
         # Let the base class default method raise the TypeError
         return json.JSONEncoder.default(self, o)
 
-    def __init__(self, headline, link, semantic_value, origin, datetime, pos, neg, neu):
+    def __init__(self, headline, link, origin, datetime):
         self.headline = headline
         self.link = link
-        self.semantic_value = semantic_value
+        # self.semantic_value = semantic_value
         self.origin = origin
         self.datetime = datetime
-        # self.hashcode = hash(self)
-        self.pos = pos
-        self.neg = neg
-        self.neu = neu
+        # self.pos = pos
+        # self.neg = neg
+        # self.neu = neu
 
 
 # Performs semantic analysis on the headline and saves as Headline data-type
@@ -122,33 +94,18 @@ class Headline(object):
 def analyze_headlines(blocks):
     analyzer = SentimentIntensityAnalyzer()
     headlines = []
-    i = 0
-    idx_p = 0
-    idx_m = 0
-    m_pos = 0.0
-    m_neg = 0.0
 
     for block in blocks:
-        vs = analyzer.polarity_scores(block[0])
-        print("{:-<65} {}".format(block[0], str(vs)))
 
-        if float(vs['pos']) > m_pos:
-            m_pos = float(vs['pos'])
-            idx_p = i
+        vs = analyzer.polarity_scores(block.headline)
 
-        if float(vs['neg'] > m_neg):
-            m_neg = float(vs['neg'])
-            idx_m = i
+        block.semantic_value = vs['compound']
+        block.pos = vs['pos']
+        block.neg = vs['neg']
+        block.neu = vs['neu']
 
-        h = Headline(block[0], block[1], vs['compound'], block[2], block[3], vs['pos'], vs['neg'], vs['neu'])
-        headlines.append(h)
+        headlines.append(block)
 
-        print("HASHCODE: " + str(h.sha256()))
-
-        i += 1
-
-    print ("MOST POSITIVE = " + blocks[idx_p][0])
-    print("MOST Negative = " + blocks[idx_m][0])
     return headlines
 
 
@@ -163,16 +120,18 @@ def get_headlines(url):
     response = urllib.request.urlopen(req).read().decode('utf8')
     r = json.loads(response)
 
+    prev_published_at = str(datetime.now()).split(" ")[0]
+
     for re in r['articles']:
 
-        headlines.append(
-            [
-                re['title'].split('\n')[0],
-                re['url'],
-                r['source'],
-                str(re['publishedAt'])
-            ]
-        )
+        if str(re['publishedAt']) == 'None':
+            published_at = prev_published_at
+        else:
+            published_at = "" + str(re['publishedAt']).split('T')[0]
+            prev_published_at = published_at
+
+        h = Headline(re['title'].split('\n')[0], re['url'], r['source'], published_at)
+        headlines.append(h)
 
     return headlines
 
@@ -215,11 +174,12 @@ def save_to_db(headlines):
     cur.execute('SET CHARACTER SET utf8;')
     cur.execute('SET character_set_connection=utf8;')
 
-    sql = "INSERT INTO headlines (headline, link, origin, semantic_value, hashcode, date_time, pos, neg, neu) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
+    sql = "INSERT INTO headlines (headline, link, origin, semantic_value, hashcode, published_at, pos, neg, neu) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
     for h in headlines:
         print("Added Headline:\t" + h.sha256())
         try:
-            cur.execute(sql, (h.headline, h.link, h.origin, h.semantic_value, h.sha256(), h.datetime, h.pos, h.neg, h.neu))
+            cur.execute(sql,
+                        (h.headline, h.link, h.origin, h.semantic_value, h.sha256(), h.datetime, h.pos, h.neg, h.neu))
         except pymysql.err.IntegrityError as e:
             print("ERROR: {}".format(e))
             continue
@@ -342,5 +302,4 @@ for url in urls:
 all_headlines = analyze_headlines(raw_headlines)
 
 print_results(all_headlines)
-print_to_file(all_headlines)
 save_to_db(all_headlines)

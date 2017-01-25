@@ -4,62 +4,76 @@
 # DESCRIPTION:
 # -   Flask server to handle incoming headlines, write to database, and display headlines.
 
-import urllib.request
-import json
+import math
+import calendar
 import dotenv
-from flask import Flask
-from flask import request
-
 import pymysql
+
+from flask import Flask, render_template
+from datetime import timedelta, date
+
 pymysql.install_as_MySQLdb()
 import MySQLdb
 
-app = Flask(__name__)
+
+def date_to_text(date):
+    d = date.split('-')
+    year = ""
+    month = ""
+    day = ""
+
+    if d[2] == 1 or d[2] == 21 or d[2] == 31:
+        day = "" + str(d[2]) + "st"
+    elif d[2] == 2 or d[2] == 22:
+        day = "" + str(d[2]) + "nd"
+    elif d[2] == 3 or d[2] == 23:
+        day = "" + str(d[2]) + "rd"
+    else:
+        day = "" + str(d[2]) + "th"
+
+    month = calendar.month_name[int(d[1])]
+    year = str(d[0])
+
+    return "on the " + day + " of " + month + ", " + year
+
+
+app = Flask(__name__, static_url_path='/static')
 dotenv.load()
-database = dotenv.get('DATABASE', 'no db')
-user = dotenv.get('DB_USER', 'no user')
-password = dotenv.get('DB_PASSWORD', 'no password')
+database = dotenv.get('DATABASE', 'no database')
+db_user = dotenv.get('DB_USER', 'no user')
+db_password = dotenv.get('DB_PASSWORD', 'no password')
+db_host = dotenv.get('DB_HOST', 'no host')
+
+db = MySQLdb.connect(host=db_host, user=db_user, passwd=db_password, db=database,
+                     charset='utf8')  # name of the data base
+
+cur = db.cursor()
+cur.execute('SET NAMES utf8;')
+cur.execute('SET CHARACTER SET utf8;')
+cur.execute('SET character_set_connection=utf8;')
+
 
 @app.route('/')
 def hello_world():
-    return 'Hello World'
+    global cur
 
+    back_date = date.today() + timedelta(days=-2)
 
-@app.route('/headlines/save', methods=['POST'])
-def save_headlines():
-    content = request.data
-    content = bytes.decode(content)
-    json_content = json.loads(content)
+    cur.execute(
+        'SELECT headline, link, origin, semantic_value, published_at FROM headlines WHERE published_at BETWEEN \'%s\' AND now() ORDER BY semantic_value DESC LIMIT 10' %back_date)
 
-    headlines = json_content['headlines']
-    # for h in headlines:
-    #     print(h)
-
-    db = MySQLdb.connect(host="localhost", user=user, passwd=password, db=database, charset='utf8')  # name of the data base
-
-    # you must create a Cursor object. It will let
-    #  you execute all the queries you need
-    cur = db.cursor()
-    cur.execute('SET NAMES utf8;')
-    cur.execute('SET CHARACTER SET utf8;')
-    cur.execute('SET character_set_connection=utf8;')
-
-    # Use all the SQL you like
-    cur.execute("SELECT * FROM headlines")
-
-    # print all the first cell of all the rows
+    pos_headlines = []
     for row in cur.fetchall():
-        print(row[0])
+        pos_headlines.append([row[0], row[1], row[2], "%.0f" % abs(float(row[3] * 100)) + "%", date_to_text(str(row[4]))])
 
-    sql = "INSERT INTO headlines (headline, link, origin, semantic_value, hashcode, datetime) VALUES (%s, %s, %s, %s, %s, %s)"
-    for h in headlines:
-        print("HASH:\t" + h['hashcode'])
-        cur.execute(sql, (h['headline'], h['link'], h['origin'], h["sentiment"], h['hashcode'], h['datetime']))
-        db.commit()
+    cur.execute(
+        'SELECT headline, link, origin, semantic_value, published_at FROM headlines WHERE published_at BETWEEN \'%s\' AND now() ORDER BY semantic_value ASC LIMIT 10' %back_date)
 
-    db.close()
+    neg_headlines = []
+    for row in cur.fetchall():
+        neg_headlines.append([row[0], row[1], row[2], "%.0f" % abs(float(row[3] * 100)) + "%", date_to_text(str(row[4]))])
 
-    return content
+    return render_template('index.html', pos_headlines=pos_headlines, neg_headlines=neg_headlines)
 
 
 if __name__ == '__main__':
