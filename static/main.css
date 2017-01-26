@@ -7,7 +7,8 @@
 }
 
 body {
-    background: var(--color5);
+    background-image: url("http://i760.photobucket.com/albums/xx250/teenlipgloss/backgrounds/7yoeeli.gif");
+    background-repeat: repeat-y;
     font-family: 'Playfair Display', serif;
 }
 
