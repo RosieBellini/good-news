@@ -60,18 +60,18 @@ def hello_world():
     back_date = date.today() + timedelta(days=-2)
 
     cur.execute(
-        'SELECT headline, link, origin, semantic_value, published_at FROM headlines WHERE published_at BETWEEN \'%s\' AND now() ORDER BY semantic_value DESC LIMIT 10' %back_date)
+        'SELECT headline, link, origin, semantic_value, published_at, id FROM headlines WHERE published_at BETWEEN \'%s\' AND now() ORDER BY semantic_value DESC LIMIT 10' %back_date)
 
     pos_headlines = []
     for row in cur.fetchall():
-        pos_headlines.append([row[0], row[1], row[2], "%.0f" % abs(float(row[3] * 100)) + "%", date_to_text(str(row[4]))])
+        pos_headlines.append([row[0], row[1], row[2], "%.0f" % abs(float(row[3] * 100)) + "%", date_to_text(str(row[4])), row[5]])
 
     cur.execute(
-        'SELECT headline, link, origin, semantic_value, published_at FROM headlines WHERE published_at BETWEEN \'%s\' AND now() ORDER BY semantic_value ASC LIMIT 10' %back_date)
+        'SELECT headline, link, origin, semantic_value, published_at, id FROM headlines WHERE published_at BETWEEN \'%s\' AND now() ORDER BY semantic_value ASC LIMIT 10' %back_date)
 
     neg_headlines = []
     for row in cur.fetchall():
-        neg_headlines.append([row[0], row[1], row[2], "%.0f" % abs(float(row[3] * 100)) + "%", date_to_text(str(row[4]))])
+        neg_headlines.append([row[0], row[1], row[2], "%.0f" % abs(float(row[3] * 100)) + "%", date_to_text(str(row[4])), row[5]])
 
     return render_template('index.html', pos_headlines=pos_headlines, neg_headlines=neg_headlines)
 
